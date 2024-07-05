@@ -24,8 +24,8 @@ export function prettyNumber(value: number): string {
 }
 
 export class EditorConfig {
-    public static readonly version: string = "0.2"; // Not using patch versions in display right now, maybe someday.
-    public static readonly versionDisplayName: string = "Midbox " + EditorConfig.version;
+    public static readonly version: string = "V2"; // Not using patch versions in display right now, maybe someday.
+    public static readonly versionDisplayName: string = "Midbox TESTING " + EditorConfig.version;
 
     public static readonly releaseNotesURL: string = "https://jummbus.bitbucket.io/patch_notes/" + EditorConfig.version + ".html";
 

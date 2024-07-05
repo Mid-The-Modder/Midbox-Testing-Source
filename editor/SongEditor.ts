@@ -148,12 +148,12 @@ class CustomChipCanvas {
     private lastX: number;
     private lastY: number;
     public newArray: Float32Array;
+    public renderedArray: Float32Array;
+    public renderedColor: string;
 
     private _change: Change | null = null;
 
     constructor(public readonly canvas: HTMLCanvasElement, private readonly _doc: SongDocument, private readonly _getChange: (newArray: Float32Array) => Change) {
-        //canvas.addEventListener("input", this._whenInput);
-        //canvas.addEventListener("change", this._whenChange);
         canvas.addEventListener("mousemove", this._onMouseMove);
         canvas.addEventListener("mousedown", this._onMouseDown);
         canvas.addEventListener("mouseup", this._onMouseUp);
@@ -165,33 +165,50 @@ class CustomChipCanvas {
         this.lastY = 0;
 
         this.newArray = new Float32Array(64);
+        this.renderedArray = new Float32Array(64);
+        this.renderedColor = "";
 
         // Init waveform
         this.redrawCanvas();
-
     }
 
     public redrawCanvas(): void {
+        const chipData: Float32Array = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()].customChipWave;
+        const renderColor: string = ColorConfig.getComputedChannelColor(this._doc.song, this._doc.channel).primaryNote;
+
+        this.renderedArray.set(chipData);
+
+        // Check if the data has changed from the last render.
+        let needsRedraw: boolean = false;
+        if (renderColor != this.renderedColor) {
+            needsRedraw = true;
+        } else for (let i: number = 0; i < 64; i++) {
+            if (chipData[i] != this.renderedArray[i]) {
+                needsRedraw = true;
+                i = 64;
+            }
+        }
+        if (!needsRedraw) {
+            return;
+        }
+
         var ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
         // Black BG
         ctx.fillStyle = ColorConfig.getComputed("--editor-background");
         ctx.fillRect(0, 0, 128, 52);
-
         // Mid-bar
         ctx.fillStyle = ColorConfig.getComputed("--ui-widget-background");
         ctx.fillRect(0, 25, 128, 2);
-
         // 25-75 bars
         ctx.fillStyle = ColorConfig.getComputed("--track-editor-bg-pitch-dim");
         ctx.fillRect(0, 13, 128, 1);
         ctx.fillRect(0, 39, 128, 1);
-
         // Waveform
-        ctx.fillStyle = ColorConfig.getComputedChannelColor(this._doc.song, this._doc.channel).primaryNote;
+        ctx.fillStyle = renderColor;
 
         for (let x: number = 0; x < 64; x++) {
-            var y: number = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()].customChipWave[x] + 26;
+            var y: number = chipData[x] + 26;
             ctx.fillRect(x * 2, y - 2, 2, 4);
 
             this.newArray[x] = y - 26;
@@ -200,7 +217,6 @@ class CustomChipCanvas {
 
     private _onMouseMove = (event: MouseEvent): void => {
         if (this.mouseDown) {
-
             var x = (event.clientX || event.pageX) - this.canvas.getBoundingClientRect().left;
             var y = Math.floor((event.clientY || event.pageY) - this.canvas.getBoundingClientRect().top);
 
@@ -210,12 +226,10 @@ class CustomChipCanvas {
             var ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
             if (this.continuousEdit == true && Math.abs(this.lastX - x) < 40) {
-
                 var lowerBound = (x < this.lastX) ? x : this.lastX;
                 var upperBound = (x < this.lastX) ? this.lastX : x;
 
                 for (let i = lowerBound; i <= upperBound; i += 2) {
-
                     var progress = (Math.abs(x - this.lastX) > 2.0) ? ((x > this.lastX) ?
                         1.0 - ((i - lowerBound) / (upperBound - lowerBound))
                         : ((i - lowerBound) / (upperBound - lowerBound))) : 0.0;
@@ -234,10 +248,7 @@ class CustomChipCanvas {
                     // Actually update current instrument's custom waveform
                     this.newArray[Math.floor(i / 2)] = (j - 26);
                 }
-
-            }
-            else {
-
+            } else {
                 ctx.fillStyle = ColorConfig.getComputed("--editor-background");
                 ctx.fillRect(Math.floor(x / 2) * 2, 0, 2, 52);
                 ctx.fillStyle = ColorConfig.getComputed("--ui-widget-background");
@@ -250,22 +261,18 @@ class CustomChipCanvas {
 
                 // Actually update current instrument's custom waveform
                 this.newArray[Math.floor(x / 2)] = (y - 26);
-
             }
-
             this.continuousEdit = true;
             this.lastX = x;
             this.lastY = y;
 
             // Preview - update integral used for sound synthesis based on new array, not actual stored array. When mouse is released, real update will happen.
             let instrument: Instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
-
             let sum: number = 0.0;
             for (let i: number = 0; i < this.newArray.length; i++) {
                 sum += this.newArray[i];
             }
             const average: number = sum / this.newArray.length;
-
             // Perform the integral on the wave. The chipSynth will perform the derivative to get the original wave back but with antialiasing.
             let cumulative: number = 0;
             let wavePrev: number = 0;
@@ -274,33 +281,30 @@ class CustomChipCanvas {
                 wavePrev = this.newArray[i] - average;
                 instrument.customChipWaveIntegral[i] = cumulative;
             }
-
             instrument.customChipWaveIntegral[64] = 0.0;
         }
-
+        // Just call a change here to prevent issue with the autoFollow preference
+        // messing with the canvas.
+        this._getChange(this.newArray);
     }
 
     private _onMouseDown = (event: MouseEvent): void => {
         this.mouseDown = true;
-
         // Allow single-click edit
         this._onMouseMove(event);
     }
+    
     private _onMouseUp = (): void => {
         this.mouseDown = false;
         this.continuousEdit = false;
-
         this._whenChange();
     }
 
     private _whenChange = (): void => {
         this._change = this._getChange(this.newArray);
-
         this._doc.record(this._change!);
-
-        this._change = null;
+        if (!this.mouseDown) this._change = null;
     };
-
 }
 
 export class SongEditor {
@@ -586,14 +590,33 @@ export class SongEditor {
     private readonly _oscilloscopeScaleRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip", onclick: () => this._openPrompt("oscilloscopeScaling") }, "Scale:"), this._oscilloscopeScaleSlider.container);
 
     private readonly _customWaveDrawCanvas: CustomChipCanvas = new CustomChipCanvas(canvas({ width: 128, height: 52, style: "border:2px solid " + ColorConfig.uiWidgetBackground, id: "customWaveDrawCanvas" }), this._doc, (newArray: Float32Array) => new ChangeCustomWave(this._doc, newArray));
-    private readonly _customWavePresetDrop: HTMLSelectElement = buildHeaderedOptions("Load Preset", select({ style: "width: 50%; height:1.5em; text-align: center; text-align-last: center;" }),
-        Config.chipWaves.map(wave => wave.name)
-    );
+
+    private readonly _customWavePresetDrop: HTMLSelectElement = buildHeaderedOptions(_.loadPresetLabel, select({ style: "width: 50%; height:1.5em; text-align: center; text-align-last: center;" }),
+        Config.chipWaves.map(wave => wave.name));
+
     private readonly _customWaveZoom: HTMLButtonElement = button({ style: "margin-left:0.5em; height:1.5em; max-width: 20px;", onclick: () => this._openPrompt("customChipSettings") }, "+");
 
-    private readonly _customWaveDraw: HTMLDivElement = div({ style: "height:80px; margin-top:10px; margin-bottom:5px" }, [
+    private readonly _customWaveCopy: HTMLButtonElement = button({ style: "width:58px; height:1.5em; text-align: right;", class: "copyButton" }, [
+		_.copyLabel,
+		// Copy icon:
+		SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -0.75em; pointer-events: none;", width: "1.5em", height: "1.5em", viewBox: "-5 -21 26 26" }, [
+			SVG.path({ d: "M 0 -15 L 1 -15 L 1 0 L 13 0 L 13 1 L 0 1 L 0 -15 z M 2 -1 L 2 -17 L 10 -17 L 14 -13 L 14 -1 z M 3 -2 L 13 -2 L 13 -12 L 9 -12 L 9 -16 L 3 -16 z", fill: "currentColor" }),
+		]),
+	]);
+    private readonly _customWavePaste: HTMLButtonElement = button({ style: "width:58px; height:1.5em; text-align: right;", class: "pasteButton" }, [
+		_.pasteLabel,
+		// Paste icon:
+		SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -0.75em; pointer-events: none;", width: "1.5em", height: "1.5em", viewBox: "0 0 26 26" }, [
+			SVG.path({ d: "M 8 18 L 6 18 L 6 5 L 17 5 L 17 7 M 9 8 L 16 8 L 20 12 L 20 22 L 9 22 z", stroke: "currentColor", fill: "none" }),
+			SVG.path({ d: "M 9 3 L 14 3 L 14 6 L 9 6 L 9 3 z M 16 8 L 20 12 L 16 12 L 16 8 z", fill: "currentColor", }),
+		]),
+	]);
+    private readonly _customWaveCopyPasteContainer: HTMLDivElement = div({class: "selectRow", style: "width: 124px; align-content: space-between;" }, this._customWaveCopy, this._customWavePaste);
+
+    private readonly _customWaveDraw: HTMLDivElement = div({ style: "height:80px; margin-top:10px; margin-bottom:25px;" }, [
         div({ style: "height:54px; display:flex; justify-content:center;" }, [this._customWaveDrawCanvas.canvas]),
         div({ style: "margin-top:5px; display:flex; justify-content:center;" }, [this._customWavePresetDrop, this._customWaveZoom]),
+        div({ style: "margin-top:1px; display:flex; justify-content:center;" }, [this._customWaveCopyPasteContainer]),
     ]);
 
     private readonly _songTitleInputBox: InputBox = new InputBox(input({ style: "font-weight:bold; border:none; width: 100%; background-color:${ColorConfig.editorBackground}; color:${ColorConfig.primaryText}; text-align:center", maxlength: "30", type: "text", value: EditorConfig.versionDisplayName }), this._doc, (oldValue: string, newValue: string) => new ChangeSongTitle(this._doc, oldValue, newValue));
@@ -1029,6 +1052,8 @@ export class SongEditor {
         this._pauseButton.addEventListener("click", this.togglePlay);
         this._recordButton.addEventListener("click", this._toggleRecord);
         this._stopButton.addEventListener("click", this._toggleRecord);
+        this._customWaveCopy.addEventListener("click", this._copyCustomWave);
+        this._customWavePaste.addEventListener("click", this._pasteCustomWave);
         // Start recording instead of opening context menu when control-clicking the record button on a Mac.
         this._recordButton.addEventListener("contextmenu", (event: MouseEvent) => {
             if (event.ctrlKey) {
@@ -1881,7 +1906,7 @@ export class SongEditor {
                 this._reverbRow.style.display = "none";
             }
 
-            if (instrument.type == InstrumentType.chip || instrument.type == InstrumentType.customChipWave || instrument.type == InstrumentType.harmonics || instrument.type == InstrumentType.pickedString || instrument.type == InstrumentType.spectrum || instrument.type == InstrumentType.pwm || instrument.type == InstrumentType.fm) {
+            if (instrument.type == InstrumentType.chip || instrument.type == InstrumentType.customChipWave || instrument.type == InstrumentType.harmonics || instrument.type == InstrumentType.pickedString) {
                 this._unisonSelectRow.style.display = "";
                 setSelectedValue(this._unisonSelect, instrument.unison);
             } else {
@@ -2796,8 +2821,9 @@ export class SongEditor {
             if (this.prompt instanceof CustomChipPrompt || this.prompt instanceof LimiterPrompt || this.prompt instanceof CustomFilterPrompt) {
                 this.prompt.whenKeyPressed(event);
             }
-            if (event.keyCode == 27) { // ESC key
-                // close prompt.
+            if (event.keyCode == 27 && !(this.prompt instanceof CustomChipPrompt)) { // ESC key
+                // Close prompt. This may be a strange way of doing it...
+                // The above is correct to some degree. Maybe find a better way to close the prompt???
                 this._doc.undo();
             }
             return;
@@ -3410,6 +3436,17 @@ export class SongEditor {
         }
     }
 
+    public _copyCustomWave = (): void => {
+        let instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
+        const chipCopy: Float32Array = instrument.customChipWave;
+        window.localStorage.setItem("chipCopy", JSON.stringify(Array.from(chipCopy)));
+    }
+
+    public _pasteCustomWave = (): void => {
+        const storedChipWave: any = JSON.parse(String(window.localStorage.getItem("chipCopy")));
+        this._doc.record(new ChangeCustomWave(this._doc, storedChipWave));
+    }
+
     public _animate = (): void => {
         // Need to update mods once more to clear the slider display
         this._modSliderUpdate();
@@ -3924,7 +3961,6 @@ export class SongEditor {
     }
 
     private _customWavePresetHandler = (event: Event): void => {
-
         // Update custom wave value
         let customWaveArray: Float32Array = new Float32Array(64);
         let index: number = this._customWavePresetDrop.selectedIndex - 1;
@@ -3937,11 +3973,8 @@ export class SongEditor {
             // Compute derivative to get original wave.
             customWaveArray[i] = (Config.chipWaves[index].samples[Math.floor(arrayPoint)] - Config.chipWaves[index].samples[(Math.floor(arrayPoint) + 1)]) / arrayStep;
 
-            if (customWaveArray[i] < minValue)
-                minValue = customWaveArray[i];
-
-            if (customWaveArray[i] > maxValue)
-                maxValue = customWaveArray[i];
+            if (customWaveArray[i] < minValue) minValue = customWaveArray[i];
+            if (customWaveArray[i] > maxValue) maxValue = customWaveArray[i];
 
             // Scale an any-size array to 64 elements
             arrayPoint += arrayStep;
@@ -3966,7 +3999,7 @@ export class SongEditor {
         //this._instrumentVolumeSlider.input.value = "" + Math.round(Config.waveVolumes[index] * 50.0 - 50.0);
 
         this._doc.record(new ChangeCustomWave(this._doc, customWaveArray))
-        this._doc.record(new ChangeVolume(this._doc, +this._instrumentVolumeSlider.input.value, -Config.volumeRange / 2 + Math.round(Math.sqrt(Config.chipWaves[index].expression) * Config.volumeRange / 2)));
+        //this._doc.record(new ChangeVolume(this._doc, +this._instrumentVolumeSlider.input.value, -Config.volumeRange / 2 + Math.round(Math.sqrt(Config.chipWaves[index].expression) * Config.volumeRange / 2)));
 
         this._customWavePresetDrop.selectedIndex = 0;
         this._doc.notifier.changed();
