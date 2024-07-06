@@ -10,10 +10,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.7/js/select2.min.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Midbox Testing</title>
+    <title>Midbox</title>
     <meta name="application-name" content="Midbox" />
     <meta name="apple-mobile-web-app-title" content="Midbox">
-	<meta name="description" content="Midbox is an online tool for sketching and sharing instrumental music." />
+	<meta name="description" content="Midbox is a mod of BeepBox/JummBox which expands on them greatly." />
     <meta name="keywords" content="chiptune, instrumental, music, song, melody, composition, tool, free, square wave, NES, NSF, Midbox, midbox, JummBox, jummbox, BeepBox, beepbox" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -71,7 +71,7 @@
             margin-top: 0.5em;
             margin-bottom: 0.5em;
             -webkit-text-stroke-width: 0;
-            color: rgb(35, 129, 236);
+            color: var(--mod-title, var(--link-accent, rgb(61, 33, 216)));
         }
 
         h2 {
@@ -82,12 +82,29 @@
             -webkit-text-stroke-width: 0;
         }
 
+        h3 {
+            font-size: 1.2rem;
+            text-align: center;
+            margin-top: 0.35rem;
+            margin-bottom: 0.5rem;
+            -webkit-text-stroke-width: 0;
+            color: var(--secondary-text, var(--link-accent, rgb(255, 255, 255)));
+        }
+
+        h4 {
+            font-size: 1rem;
+            text-align: center;
+            margin-top: 0.1rem;
+            margin-bottom: 0.1rem;
+            -webkit-text-stroke-width: 0;
+        }
+
         .centerDiv {
 			margin: 0px auto;
 		}
 
         a {
-            color: var(--link-accent, rgb(61, 33, 216));
+            color: var(--link-accent, rgb(17, 40, 252));
         }
 
         .donation form {
@@ -157,7 +174,7 @@
         <section>
             <h1>
                 <font color="#131875">Midbox TESTING</font>
-                <span id="jummboxPlant" style="display: inline; color:#62a13b"></span>
+                <span id="midboxPlant" style="display: inline; color:#0c46e4e5"></span>
             </h1>
 
             <p>This is a version of Midbox made for testing and gathering feedback on features planned to be added in the next update. <br> Please keep in mind songs you make here will be lost due time. Only use this for testing features for Midbox's development.</p>
@@ -181,26 +198,27 @@
         // Randomize display of header
         // 1-in-10
         if (Math.floor(Math.random() * 10) == 0) {
-            switch (Math.floor(Math.random() * 4)) {
+            switch (Math.floor(Math.random() * 5)) {
                 case 0:
-                    document.getElementById("jummboxPlant").innerHTML = "  🍂";
+                    document.getElementById("midboxPlant").innerHTML = "  🍂";
                     break;
                 case 1:
-                    document.getElementById("jummboxPlant").innerHTML = "  🌿";
+                    document.getElementById("midboxPlant").innerHTML = "  🌿";
                     break;
                 case 2:
-                    document.getElementById("jummboxPlant").innerHTML = "  🌺";
+                    document.getElementById("midboxPlant").innerHTML = "  🌺";
                     break;
                 case 3:
-                    document.getElementById("jummboxPlant").innerHTML = "  🍃";
+                    document.getElementById("midboxPlant").innerHTML = "  🍃";
+                    break;
+                case 4: 
+                    document.getElementById("midboxPlant").innerHTML = "..?";
                     break;
             }
         }
 
         if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|android|ipad|playbook|silk/i.test(navigator.userAgent)) {
             document.getElementById("introduction").innerHTML = "Midbox is an online tool for sketching and sharing chiptune melodies. Make sure that your volume is turned up, then press the play button!";
-            document.getElementById("keyboard-instructions").style.display = "none";
-            document.getElementById("bar-editing").innerHTML = "Tap the boxes to move to a different part of the song, or tap on the currently selected box to swap which pattern is played during that part of the song.";
         }
 
         function browserHasRequiredFeatures() {
