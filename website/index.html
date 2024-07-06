@@ -168,19 +168,16 @@
                 - 5 new FM operator waveforms; Clang, Metal, Rounded (UltraBox), Secant, and Double Sine. <br>
                 - Strum speed, slide speed, "continue through pattern" checkbox, and arpeggio patterns. <br>
             </p>
-            <br>
             <p>
-                Fixed from the previous testing version:
+                Fixed from the previous testing version: <br>
+                - Fixed issue where the testing site wouldn't load correctly on mobile devices. <br>
+                - Fixed issues where certain custom chip elements weren't interactable on mobile. <br>
                 - Removed the unison select from instruments that don't actually support it yet. <br>
                 - Fixed randomly-generated instruments not generating due to missing transition/chord types. <br>
             </p>
         </section>
-    <!--
-    Instead of loading js beepbox editor interface directly, test for browser support.
-    <script type="text/javascript" src="beepbox_editor.min.js"></script>
-    -->
+    </div>
     <script type="text/javascript">
-
         // Randomize display of header
         // 1-in-10
         if (Math.floor(Math.random() * 10) == 0) {
@@ -204,7 +201,6 @@
             document.getElementById("introduction").innerHTML = "Midbox is an online tool for sketching and sharing chiptune melodies. Make sure that your volume is turned up, then press the play button!";
             document.getElementById("keyboard-instructions").style.display = "none";
             document.getElementById("bar-editing").innerHTML = "Tap the boxes to move to a different part of the song, or tap on the currently selected box to swap which pattern is played during that part of the song.";
-			//document.getElementById("offline-instructions").innerHTML = 'You can use BeepBox when your device is offline if you put a shortcut to BeepBox on your home screen. <ul><li>Chrome: find the "Add to Home Screen" option in the ⋮ menu.</li><li>Firefox: find the "Add Page Shortcut" option in the ⋮ menu.</li><li>Safari: find the "Add to Home Screen" option in the bookmark menu.</li></ul>';
         }
 
         function browserHasRequiredFeatures() {
